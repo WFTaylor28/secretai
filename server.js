@@ -6,7 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { Server } from "socket.io";
 import { createServer } from "http";
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 import bodyParser from "body-parser";
 import path from "path";
 import stripe from "stripe";
@@ -52,7 +52,7 @@ app.post("/create-checkout-session", async (req, res) => {
 app.post("/chat", async (req, res) => {
     try {
         const { prompt } = req.body;
-        const response = await openai.completions.create({
+        const response = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }]
         });
