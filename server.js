@@ -1,22 +1,22 @@
 // SecretAi - AI Chat Web App
-// Backend: Node.js | Frontend: React | Hosting: Vercel
+// Backend: Node.js | Hosting: Vercel
 
-// Import required modules
 import express from "express";
 import cors from "cors";
-import stripe from "stripe";
 import dotenv from "dotenv";
-import OpenAI from "openai";
-import path from "path";
-import bodyParser from "body-parser";
 import { Server } from "socket.io";
-import http from "http";
+import { createServer } from "http";
+import OpenAI from "openai";
+import bodyParser from "body-parser";
+import path from "path";
+import stripe from "stripe";
 
 dotenv.config();
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
 const io = new Server(server);
-const port = process.env.PORT || 5000;
+
+const PORT = process.env.PORT || 5000;
 const stripeInstance = stripe(process.env.STRIPE_SECRET_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -24,7 +24,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(process.cwd(), "public")));
 
 // Route to create Stripe checkout session
 app.post("/create-checkout-session", async (req, res) => {
@@ -32,65 +32,46 @@ app.post("/create-checkout-session", async (req, res) => {
         const session = await stripeInstance.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "subscription",
+            success_url: "https://aisecret2025.com/success",
+            cancel_url: "https://aisecret2025.com/cancel",
             line_items: [
                 {
-                    price_data: {
-                        currency: "usd",
-                        product_data: {
-                            name: "AI Chat Subscription",
-                        },
-                        unit_amount: 1000, // $10 per month
-                        recurring: {
-                            interval: "month",
-                        },
-                    },
-                    quantity: 1,
-                },
-            ],
-            success_url: "https://yourwebsite.com/success",
-            cancel_url: "https://yourwebsite.com/cancel",
+                    price: "your-stripe-price-id-here",
+                    quantity: 1
+                }
+            ]
         });
-
-        res.json({ id: session.id });
+        res.json({ sessionId: session.id });
     } catch (error) {
-        console.error("Error creating checkout session:", error);
-        res.status(500).json({ error: "Something went wrong" });
+        console.error("Stripe Error:", error);
+        res.status(500).send("Error creating Stripe session");
     }
 });
 
-// Real-time AI chat using GPT-3.5 with WebSockets
-io.on("connection", (socket) => {
-    console.log("User connected");
-    
-    socket.on("sendMessage", async (message) => {
-        try {
-            const response = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [{ role: "user", content: message }],
-                max_tokens: 500,
-            });
-            
-            socket.emit("receiveMessage", response.choices[0].message.content);
-        } catch (error) {
-            console.error("Error processing AI chat:", error);
-            socket.emit("errorMessage", "Failed to generate response");
-        }
-    });
+// OpenAI API Route
+app.post("/chat", async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        const response = await openai.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }]
+        });
+        res.json({ reply: response.choices[0].message.content });
+    } catch (error) {
+        console.error("OpenAI Error:", error);
+        res.status(500).send("Error processing OpenAI request");
+    }
+});
 
+// WebSocket Connection
+io.on("connection", (socket) => {
+    console.log("New WebSocket connection");
     socket.on("disconnect", () => {
         console.log("User disconnected");
     });
 });
 
-// Serve Frontend Pages
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-app.get("/dashboard", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
-});
-
-server.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// Start server
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
