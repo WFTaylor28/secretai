@@ -6,7 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { Server } from "socket.io";
 import { createServer } from "http";
-import { OpenAI } from "openai";
+import OpenAI from "openai";  // ✅ Correct Import
 import bodyParser from "body-parser";
 import path from "path";
 import stripe from "stripe";
@@ -18,7 +18,7 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 5000;
 const stripeInstance = stripe(process.env.STRIPE_SECRET_KEY);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); // ✅ Correct API Key Usage
 
 // Middleware
 app.use(cors());
@@ -48,7 +48,7 @@ app.post("/create-checkout-session", async (req, res) => {
     }
 });
 
-// OpenAI API Route
+// ✅ Fixed OpenAI API Route
 app.post("/chat", async (req, res) => {
     try {
         const { prompt } = req.body;
@@ -70,7 +70,7 @@ app.post("/chat", async (req, res) => {
         }
     } catch (error) {
         console.error("OpenAI API Error:", error);
-        res.status(500).json({ error: "Failed to process OpenAI request." });
+        res.status(500).json({ error: error.message || "Failed to process OpenAI request." });
     }
 });
 
@@ -86,3 +86,4 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
