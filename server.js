@@ -6,7 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { Server } from "socket.io";
 import { createServer } from "http";
-import OpenAI from "openai";  // ✅ Correct Import
+import OpenAI from "openai";  // ✅ FIXED OpenAI Import
 import bodyParser from "body-parser";
 import path from "path";
 import stripe from "stripe";
@@ -18,19 +18,25 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 5000;
 const stripeInstance = stripe(process.env.STRIPE_SECRET_KEY);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); // ✅ Correct API Key Usage
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(process.cwd(), "public")));
+// ✅ FIXED: Correct OpenAI instance creation
+if (!process.env.OPENAI_API_KEY) {
+    console.error("❌ [Error] Missing OpenAI API Key in Environment Variables!");
+    process.exit(1);  // Stop the server if no API key
+}
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ✅ Debugging Middleware (Logs every request)
 app.use((req, res, next) => {
     console.log(`📌 [Request] ${req.method} ${req.url}`);
     next();
 });
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(process.cwd(), "public")));
 
 // Route to create Stripe checkout session
 app.post("/create-checkout-session", async (req, res) => {
@@ -56,7 +62,7 @@ app.post("/create-checkout-session", async (req, res) => {
     }
 });
 
-// ✅ Fixed OpenAI API Route with Debugging
+// ✅ FIXED OpenAI Chat Route
 app.post("/chat", async (req, res) => {
     try {
         console.log("✅ [Chat] Received a request at /chat");
@@ -101,5 +107,3 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
-
-
