@@ -26,9 +26,16 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(process.cwd(), "public")));
 
+// ✅ Debugging Middleware (Logs every request)
+app.use((req, res, next) => {
+    console.log(`📌 [Request] ${req.method} ${req.url}`);
+    next();
+});
+
 // Route to create Stripe checkout session
 app.post("/create-checkout-session", async (req, res) => {
     try {
+        console.log("✅ [Stripe] Creating checkout session...");
         const session = await stripeInstance.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "subscription",
@@ -41,21 +48,26 @@ app.post("/create-checkout-session", async (req, res) => {
                 }
             ]
         });
+        console.log("✅ [Stripe] Checkout session created:", session.id);
         res.json({ sessionId: session.id });
     } catch (error) {
-        console.error("Stripe Error:", error);
+        console.error("❌ [Stripe] Error:", error);
         res.status(500).send("Error creating Stripe session");
     }
 });
 
-// ✅ Fixed OpenAI API Route
+// ✅ Fixed OpenAI API Route with Debugging
 app.post("/chat", async (req, res) => {
     try {
+        console.log("✅ [Chat] Received a request at /chat");
         const { prompt } = req.body;
+
         if (!prompt) {
+            console.error("❌ [Chat] ERROR: No prompt provided");
             return res.status(400).json({ error: "Prompt is required." });
         }
 
+        console.log("✅ [Chat] Sending request to OpenAI API...");
         const response = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
@@ -63,27 +75,31 @@ app.post("/chat", async (req, res) => {
             max_tokens: 200,
         });
 
+        console.log("✅ [Chat] OpenAI API response received:", response);
+
         if (response.choices && response.choices.length > 0) {
             res.json({ reply: response.choices[0].message.content });
         } else {
+            console.error("❌ [Chat] ERROR: OpenAI returned an empty response.");
             res.status(500).json({ error: "OpenAI returned an empty response." });
         }
     } catch (error) {
-        console.error("OpenAI API Error:", error);
+        console.error("❌ [Chat] OpenAI API ERROR:", error);
         res.status(500).json({ error: error.message || "Failed to process OpenAI request." });
     }
 });
 
 // WebSocket Connection
 io.on("connection", (socket) => {
-    console.log("New WebSocket connection");
+    console.log("🔵 [WebSocket] New connection established");
     socket.on("disconnect", () => {
-        console.log("User disconnected");
+        console.log("🔴 [WebSocket] User disconnected");
     });
 });
 
 // Start server
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
+
 
